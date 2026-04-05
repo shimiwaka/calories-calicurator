@@ -25,7 +25,11 @@ if ($method === 'GET') {
          WHERE user_id = ? AND date = ? ORDER BY recorded_at ASC'
     );
     $stmt->execute([$user_id, $date]);
-    json_response($stmt->fetchAll(PDO::FETCH_ASSOC));
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as &$row) {
+        $row['id'] = (int)$row['id'];
+    }
+    json_response($rows);
 }
 
 if ($method === 'POST') {

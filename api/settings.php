@@ -39,7 +39,13 @@ if ($method === 'GET') {
          FROM calorie_settings WHERE user_id = ? ORDER BY start_date DESC'
     );
     $stmt->execute([$user_id]);
-    json_response($stmt->fetchAll(PDO::FETCH_ASSOC));
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as &$row) {
+        $row['id']                   = (int)$row['id'];
+        $row['base_intake_kcal']     = (int)$row['base_intake_kcal'];
+        $row['base_exercise_kcal']   = (int)$row['base_exercise_kcal'];
+    }
+    json_response($rows);
 }
 
 if ($method === 'POST') {

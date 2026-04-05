@@ -37,6 +37,17 @@ if ($method === 'GET') {
     $s->execute([$user_id, $date, $date]);
     $setting = $s->fetch(PDO::FETCH_ASSOC);
 
+    // PDO/SQLiteは値を文字列で返すため整数にキャスト
+    if ($record) {
+        foreach (['intake_kcal', 'exercise_kcal', 'snack_kcal'] as $f) {
+            $record[$f] = $record[$f] !== null ? (int)$record[$f] : null;
+        }
+    }
+    if ($setting) {
+        $setting['base_intake_kcal']   = (int)$setting['base_intake_kcal'];
+        $setting['base_exercise_kcal'] = (int)$setting['base_exercise_kcal'];
+    }
+
     json_response([
         'date'    => $date,
         'today'   => get_today_date(),
