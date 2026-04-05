@@ -41,7 +41,10 @@ if ($method === 'POST') {
     }
 
     $now = date('Y-m-d H:i:s');
-    $date = get_today_date();
+    // 明示的にdateが渡された場合はそれを使用（過去日付への記録）
+    $date = (isset($body['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $body['date']))
+        ? $body['date']
+        : get_today_date();
 
     $stmt = $pdo->prepare(
         'INSERT INTO daily_events (user_id, recorded_at, event_type, date) VALUES (?, ?, ?, ?)'
@@ -50,6 +53,29 @@ if ($method === 'POST') {
     $id = (int)$pdo->lastInsertId();
 
     json_response(['id' => $id, 'recorded_at' => $now, 'event_type' => $event_type, 'date' => $date]);
+}
+
+if ($method === 'PUT') {
+    $body = json_decode(file_get_contents('php://input'), true);
+    $id   = (int)($body['id'] ?? 0);
+    $time = $body['time'] ?? ''; // "HH:MM" 形式
+
+    if ($id <= 0 || !preg_match('/^\d{2}:\d{2}$/', $time)) {
+        json_response(['error' => 'idとtime（HH:MM形式）が必要です'], 400);
+    }
+
+    // 現在のイベントの日付を取得して、時刻だけ変更する
+    $stmt = $pdo->prepare('SELECT date FROM daily_events WHERE id = ? AND user_id = ?');
+    $stmt->execute([$id, $user_id]);
+    $ev = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$ev) {
+        json_response(['error' => 'イベントが見つかりません'], 404);
+    }
+
+    $recorded_at = $ev['date'] . ' ' . $time . ':00';
+    $stmt = $pdo->prepare('UPDATE daily_events SET recorded_at = ? WHERE id = ? AND user_id = ?');
+    $stmt->execute([$recorded_at, $id, $user_id]);
+    json_response(['ok' => true, 'recorded_at' => $recorded_at]);
 }
 
 if ($method === 'DELETE') {

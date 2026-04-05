@@ -1,5 +1,5 @@
 // js/app.js
-const { createApp, ref, reactive, computed, onMounted } = Vue;
+const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
 
 // 共通API呼び出しユーティリティ
 async function api(path, options = {}) {
@@ -67,7 +67,10 @@ const TodayView = {
     const setting = ref(null);
     const events = ref([]);
     const today = ref('');
+    const selectedDate = ref('');
     const saving = ref(false);
+    const editingEventId = ref(null);
+    const editingTime = ref('');
 
     const diff = computed(() => {
       if (!setting.value) return null;
@@ -76,10 +79,11 @@ const TodayView = {
       return intake - setting.value.base_intake_kcal - exercise + setting.value.base_exercise_kcal;
     });
 
-    async function load() {
+    async function loadDate(date) {
       try {
-        const data = await api('api/daily.php');
+        const data = await api(`api/daily.php?date=${date}`);
         today.value = data.today;
+        record.intake_kcal = ''; record.exercise_kcal = ''; record.snack_kcal = ''; record.memo = '';
         if (data.record) {
           record.intake_kcal   = data.record.intake_kcal   ?? '';
           record.exercise_kcal = data.record.exercise_kcal ?? '';
@@ -87,12 +91,27 @@ const TodayView = {
           record.memo          = data.record.memo          ?? '';
         }
         setting.value = data.setting;
-        const ev = await api(`api/events.php?date=${data.today}`);
+        const ev = await api(`api/events.php?date=${date}`);
         events.value = ev;
+        editingEventId.value = null;
       } catch (e) {
         emit('error', e.message);
       }
     }
+
+    async function load() {
+      // 初回：今日の日付をAPIから取得して selectedDate にセット
+      try {
+        const data = await api('api/daily.php');
+        selectedDate.value = data.today;
+      } catch (e) {
+        emit('error', e.message);
+      }
+    }
+
+    watch(selectedDate, (date) => {
+      if (date) loadDate(date);
+    });
 
     async function save() {
       saving.value = true;
@@ -100,6 +119,7 @@ const TodayView = {
         await api('api/daily.php', {
           method: 'POST',
           body: JSON.stringify({
+            date:          selectedDate.value,
             intake_kcal:   record.intake_kcal   !== '' ? parseInt(record.intake_kcal)   : null,
             exercise_kcal: record.exercise_kcal !== '' ? parseInt(record.exercise_kcal) : null,
             snack_kcal:    record.snack_kcal    !== '' ? parseInt(record.snack_kcal)    : null,
@@ -117,7 +137,7 @@ const TodayView = {
       try {
         const ev = await api('api/events.php', {
           method: 'POST',
-          body: JSON.stringify({ event_type: type }),
+          body: JSON.stringify({ event_type: type, date: selectedDate.value }),
         });
         events.value.push(ev);
       } catch (e) {
@@ -134,15 +154,41 @@ const TodayView = {
       }
     }
 
+    function startEditEvent(ev) {
+      editingEventId.value = ev.id;
+      editingTime.value = ev.recorded_at.slice(11, 16); // "HH:MM"
+    }
+
+    async function saveEventTime(id) {
+      try {
+        const res = await api('api/events.php', {
+          method: 'PUT',
+          body: JSON.stringify({ id, time: editingTime.value }),
+        });
+        const ev = events.value.find(e => e.id === id);
+        if (ev) ev.recorded_at = res.recorded_at;
+        editingEventId.value = null;
+      } catch (e) {
+        emit('error', e.message);
+      }
+    }
+
     const eventLabel = (type) => type === 'excretion' ? '排泄' : '体重計測';
 
     onMounted(load);
-    return { record, setting, events, today, saving, diff, save, recordEvent, deleteEvent, eventLabel };
+    return {
+      record, setting, events, today, selectedDate, saving, diff,
+      editingEventId, editingTime,
+      save, recordEvent, deleteEvent, startEditEvent, saveEventTime, eventLabel,
+    };
   },
   template: `
     <div>
       <div class="card">
-        <h3 style="margin-bottom:12px">今日の記録（{{ today }}）</h3>
+        <div class="row" style="justify-content:space-between;margin-bottom:12px">
+          <h3>記録する日付</h3>
+          <input v-model="selectedDate" type="date" style="width:auto;padding:6px;margin:0">
+        </div>
         <div v-if="setting">
           <p style="font-size:13px;color:#666;margin-bottom:12px">
             基準: 摂取 {{ setting.base_intake_kcal }} kcal / 消費 {{ setting.base_exercise_kcal }} kcal
@@ -177,8 +223,17 @@ const TodayView = {
         </div>
         <ul class="event-list">
           <li v-for="ev in events" :key="ev.id">
-            <span>{{ ev.recorded_at.slice(11,16) }} {{ eventLabel(ev.event_type) }}</span>
-            <button class="danger" @click="deleteEvent(ev.id)" style="padding:2px 8px;font-size:12px">削除</button>
+            <span v-if="editingEventId !== ev.id">{{ ev.recorded_at.slice(11,16) }} {{ eventLabel(ev.event_type) }}</span>
+            <span v-else style="display:flex;align-items:center;gap:6px">
+              <input v-model="editingTime" type="time" style="width:auto;padding:4px;margin:0;font-size:14px">
+              <span style="font-size:13px">{{ eventLabel(ev.event_type) }}</span>
+            </span>
+            <div style="display:flex;gap:4px">
+              <button v-if="editingEventId !== ev.id" class="secondary" @click="startEditEvent(ev)" style="padding:2px 8px;font-size:12px">時刻編集</button>
+              <button v-if="editingEventId === ev.id" class="primary" @click="saveEventTime(ev.id)" style="padding:2px 8px;font-size:12px">保存</button>
+              <button v-if="editingEventId === ev.id" @click="editingEventId=null" style="padding:2px 8px;font-size:12px;border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#fff">×</button>
+              <button class="danger" @click="deleteEvent(ev.id)" style="padding:2px 8px;font-size:12px">削除</button>
+            </div>
           </li>
         </ul>
         <p v-if="events.length === 0" style="font-size:13px;color:#999">まだ記録がありません</p>
