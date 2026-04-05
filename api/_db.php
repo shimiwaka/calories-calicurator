@@ -1,7 +1,5 @@
 <?php
 // api/_db.php
-// DBファイルのパスはweb公開ディレクトリの外が理想だが、
-// さくら共有ホスティングではdocument root配下に置き.htaccessで保護する
 function get_db(): PDO {
     $db_path = __DIR__ . '/../db/calories.db';
     $db_dir = dirname($db_path);
