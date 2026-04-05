@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>カロリー計算機</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f5f5f5; color: #333; }
+    #app { max-width: 600px; margin: 0 auto; padding: 16px; }
+    .card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .nav { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .nav button { flex: 1; padding: 8px; border: none; border-radius: 4px; background: #e0e0e0; cursor: pointer; }
+    .nav button.active { background: #4caf50; color: #fff; }
+    input, textarea { width: 100%; padding: 8px; margin: 4px 0 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+    button.primary { background: #4caf50; color: #fff; border: none; border-radius: 4px; padding: 10px 16px; cursor: pointer; font-size: 16px; }
+    button.secondary { background: #2196f3; color: #fff; border: none; border-radius: 4px; padding: 10px 16px; cursor: pointer; font-size: 16px; }
+    button.danger { background: #f44336; color: #fff; border: none; border-radius: 4px; padding: 8px 12px; cursor: pointer; }
+    .error { background: #ffebee; color: #c62828; padding: 10px; border-radius: 4px; margin-bottom: 12px; }
+    .diff-plus { color: #f44336; font-weight: bold; }
+    .diff-minus { color: #4caf50; font-weight: bold; }
+    label { font-size: 14px; color: #555; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .event-list { list-style: none; }
+    .event-list li { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #f9f9f9; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div v-if="error" class="error">{{ error }}</div>
+    <div v-if="!user">
+      <login-view @login="onLogin" @register="onRegister"></login-view>
+    </div>
+    <div v-else>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <span>{{ user.username }} さん</span>
+          <button class="danger" @click="logout">ログアウト</button>
+        </div>
+      </div>
+      <nav class="nav">
+        <button :class="{active: page==='today'}"    @click="page='today'">今日の記録</button>
+        <button :class="{active: page==='list'}"     @click="page='list'">日別一覧</button>
+        <button :class="{active: page==='monthly'}"  @click="page='monthly'">月間サマリー</button>
+        <button :class="{active: page==='settings'}" @click="page='settings'">設定</button>
+      </nav>
+      <today-view    v-if="page==='today'"    :user="user" @error="showError"></today-view>
+      <list-view     v-if="page==='list'"     :user="user" @error="showError"></list-view>
+      <monthly-view  v-if="page==='monthly'"  :user="user" @error="showError"></monthly-view>
+      <settings-view v-if="page==='settings'" :user="user" @error="showError"></settings-view>
+    </div>
+  </div>
+  <script src="js/app.js"></script>
+</body>
+</html>
