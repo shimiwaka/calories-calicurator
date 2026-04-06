@@ -322,9 +322,9 @@ const ListView = {
         <div v-if="editing !== rec.date" style="font-size:13px;color:#555;margin-top:4px">
           摂取: {{ rec.intake_kcal ?? '-' }} / 運動: {{ rec.exercise_kcal ?? '-' }} / お菓子: {{ rec.snack_kcal ?? '-' }}
           <span v-if="rec.memo"> | {{ rec.memo }}</span>
-        </div>
-        <div v-if="editing !== rec.date && rec.events && rec.events.length > 0" style="font-size:20px;margin-top:4px;letter-spacing:2px">
-          <span v-for="ev in rec.events" :key="ev.id">{{ ev.event_type === 'excretion' ? '🚽' : '⚖️' }}</span>
+          <div v-if="rec.events && rec.events.length > 0" style="font-size:20px;margin-top:4px;letter-spacing:2px">
+            <span v-for="ev in rec.events" :key="ev.id">{{ ev.event_type === 'excretion' ? '🚽' : '⚖️' }}</span>
+          </div>
         </div>
         <div v-else style="margin-top:8px">
           <input v-model="editData.intake_kcal"   type="number" min="0" placeholder="摂取kcal">
