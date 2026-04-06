@@ -12,9 +12,7 @@ set_exception_handler(function (Throwable $e) {
     exit;
 });
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+start_session();
 
 $action = $_GET['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];

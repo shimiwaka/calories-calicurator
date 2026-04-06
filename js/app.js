@@ -173,7 +173,7 @@ const TodayView = {
       }
     }
 
-    const eventLabel = (type) => type === 'excretion' ? '排泄' : '体重計測';
+    const eventLabel = (type) => type === 'excretion' ? '🚽' : '⚖️';
 
     onMounted(load);
     return {
@@ -218,8 +218,8 @@ const TodayView = {
       <div class="card">
         <h3 style="margin-bottom:12px">記録ボタン</h3>
         <div class="row" style="gap:12px;margin-bottom:16px">
-          <button class="secondary" @click="recordEvent('excretion')" style="flex:1">排泄 🚽</button>
-          <button class="secondary" @click="recordEvent('weigh_in')" style="flex:1">体重計測 ⚖️</button>
+          <button class="secondary" @click="recordEvent('excretion')" style="flex:1">🚽</button>
+          <button class="secondary" @click="recordEvent('weigh_in')" style="flex:1">⚖️</button>
         </div>
         <ul class="event-list">
           <li v-for="ev in events" :key="ev.id">
@@ -260,11 +260,14 @@ const ListView = {
         dates.push(d.toISOString().slice(0, 10));
       }
       const results = await Promise.all(
-        dates.map(date => api(`api/daily.php?date=${date}`).catch(() => null))
+        dates.map(date => Promise.all([
+          api(`api/daily.php?date=${date}`).catch(() => null),
+          api(`api/events.php?date=${date}`).catch(() => []),
+        ]))
       );
       records.value = results
-        .filter(r => r && r.record)
-        .map(r => ({ ...r.record, setting: r.setting }));
+        .filter(([r]) => r && r.record)
+        .map(([r, evs]) => ({ ...r.record, setting: r.setting, events: evs }));
     }
 
     function startEdit(rec) {
@@ -319,6 +322,9 @@ const ListView = {
         <div v-if="editing !== rec.date" style="font-size:13px;color:#555;margin-top:4px">
           摂取: {{ rec.intake_kcal ?? '-' }} / 運動: {{ rec.exercise_kcal ?? '-' }} / お菓子: {{ rec.snack_kcal ?? '-' }}
           <span v-if="rec.memo"> | {{ rec.memo }}</span>
+        </div>
+        <div v-if="editing !== rec.date && rec.events && rec.events.length > 0" style="font-size:20px;margin-top:4px;letter-spacing:2px">
+          <span v-for="ev in rec.events" :key="ev.id">{{ ev.event_type === 'excretion' ? '🚽' : '⚖️' }}</span>
         </div>
         <div v-else style="margin-top:8px">
           <input v-model="editData.intake_kcal"   type="number" min="0" placeholder="摂取kcal">
