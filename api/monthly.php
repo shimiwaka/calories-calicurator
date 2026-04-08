@@ -40,6 +40,8 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $total_diff  = 0;
 $total_snack = 0;
+$total_intake = 0;
+$total_exercise = 0;
 $days = 0;
 
 foreach ($rows as $row) {
@@ -53,6 +55,8 @@ foreach ($rows as $row) {
     $diff = $intake - $base_in - $exercise + $base_ex;
     $total_diff  += $diff;
     $total_snack += $snack;
+    $total_intake += $intake;
+    $total_exercise += $exercise;
     $days++;
 }
 
@@ -61,5 +65,8 @@ json_response([
     'month'           => $month,
     'total_diff_kcal' => $total_diff,
     'avg_snack_kcal'  => $days > 0 ? (int)round($total_snack / $days) : 0,
+    'avg_intake_kcal' => $days > 0 ? (int)round($total_intake / $days) : 0,
+    'avg_exercise_kcal' => $days > 0 ? (int)round($total_exercise / $days) : 0,
+    'avg_diff_kcal'   => $days > 0 ? (int)round($total_diff / $days) : 0,
     'days_recorded'   => $days,
 ]);

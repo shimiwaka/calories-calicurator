@@ -218,8 +218,8 @@ const TodayView = {
       <div class="card">
         <h3 style="margin-bottom:12px">記録ボタン</h3>
         <div class="row" style="gap:12px;margin-bottom:16px">
-          <button class="secondary" @click="recordEvent('excretion')" style="flex:1">🚽</button>
-          <button class="secondary" @click="recordEvent('weigh_in')" style="flex:1">⚖️</button>
+           <button class="secondary" @click="recordEvent('excretion')" style="flex:1">🚽</button>
+           <button class="weigh" @click="recordEvent('weigh_in')" style="flex:1">⚖️</button>
         </div>
         <ul class="event-list">
           <li v-for="ev in events" :key="ev.id">
@@ -381,16 +381,24 @@ const MonthlyView = {
         <button @click="nextMonth" style="padding:6px 12px;border:1px solid #ccc;border-radius:4px;cursor:pointer">▶</button>
       </div>
       <div v-if="summary">
-        <table>
-          <tr><th>記録日数</th><td>{{ summary.days_recorded }} 日</td></tr>
-          <tr>
-            <th>累計差分</th>
-            <td :class="summary.total_diff_kcal > 0 ? 'diff-plus' : 'diff-minus'">
-              {{ summary.total_diff_kcal > 0 ? '+' : '' }}{{ summary.total_diff_kcal }} kcal
-            </td>
-          </tr>
-          <tr><th>平均お菓子</th><td>{{ summary.avg_snack_kcal }} kcal/日</td></tr>
-        </table>
+         <table>
+           <tr><th>記録日数</th><td>{{ summary.days_recorded }} 日</td></tr>
+           <tr>
+             <th>累計差分</th>
+             <td :class="summary.total_diff_kcal > 0 ? 'diff-plus' : 'diff-minus'">
+               {{ summary.total_diff_kcal > 0 ? '+' : '' }}{{ summary.total_diff_kcal }} kcal
+             </td>
+           </tr>
+           <tr><th>平均お菓子</th><td>{{ summary.avg_snack_kcal }} kcal/日</td></tr>
+           <tr><th>平均摂取カロリー</th><td>{{ summary.avg_intake_kcal }} kcal/日</td></tr>
+           <tr><th>平均消費カロリー</th><td>{{ summary.avg_exercise_kcal }} kcal/日</td></tr>
+           <tr>
+             <th>平均差分</th>
+             <td :class="summary.avg_diff_kcal > 0 ? 'diff-plus' : 'diff-minus'">
+               {{ summary.avg_diff_kcal > 0 ? '+' : '' }}{{ summary.avg_diff_kcal }} kcal/日
+             </td>
+           </tr>
+         </table>
         <p v-if="summary.days_recorded === 0" style="margin-top:12px;color:#999;font-size:14px">この月の記録はありません</p>
       </div>
     </div>
