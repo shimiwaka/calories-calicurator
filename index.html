@@ -38,12 +38,6 @@
       <login-view @login="onLogin" @register="onRegister"></login-view>
     </div>
     <div v-else>
-      <div class="card">
-        <div class="row" style="justify-content:space-between">
-          <span>{{ user.username }} さん</span>
-          <button class="danger" @click="logout">ログアウト</button>
-        </div>
-      </div>
       <nav class="nav">
         <button :class="{active: page==='today'}"    @click="page='today'">今日の記録</button>
         <button :class="{active: page==='list'}"     @click="page='list'">日別一覧</button>
@@ -54,6 +48,12 @@
       <list-view     v-if="page==='list'"     :user="user" @error="showError"></list-view>
       <monthly-view  v-if="page==='monthly'"  :user="user" @error="showError"></monthly-view>
       <settings-view v-if="page==='settings'" :user="user" @error="showError"></settings-view>
+      <div class="card" style="margin-top:16px">
+        <div class="row" style="justify-content:space-between">
+          <span>{{ user.username }} さん</span>
+          <button class="danger" @click="logout">ログアウト</button>
+        </div>
+      </div>
     </div>
   </div>
   <script src="js/app.js"></script>
