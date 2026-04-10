@@ -186,8 +186,7 @@ const TodayView = {
     <div>
       <div class="card">
         <div class="row" style="justify-content:space-between;margin-bottom:12px">
-          <h3>記録する日付</h3>
-          <input v-model="selectedDate" type="date" style="width:auto;padding:6px;margin:0">
+           <input v-model="selectedDate" type="date" style="width:auto;padding:6px;margin:0">
         </div>
         <div v-if="setting">
           <p style="font-size:13px;color:#666;margin-bottom:12px">
