@@ -1,6 +1,6 @@
 <?php
 // api/_auth_check.php
-define('SESSION_LIFETIME', 60 * 60 * 24 * 7); // 1週間
+define('SESSION_LIFETIME', 60 * 60 * 24 * 30); // 1ヶ月
 
 function start_session(): void {
     if (session_status() === PHP_SESSION_NONE) {
