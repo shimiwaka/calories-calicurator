@@ -198,18 +198,42 @@ const TodayView = {
 
     const eventLabel = (type) => type === 'excretion' ? '🚽' : '⚖️';
 
-    onMounted(load);
+    function prevDay() {
+      const d = new Date(selectedDate.value);
+      d.setDate(d.getDate() - 1);
+      selectedDate.value = d.toISOString().slice(0, 10);
+    }
+
+    function nextDay() {
+      const d = new Date(selectedDate.value);
+      d.setDate(d.getDate() + 1);
+      selectedDate.value = d.toISOString().slice(0, 10);
+    }
+
+    onMounted(() => {
+      load();
+      const timer = setInterval(() => {
+        if (selectedDate.value) loadDate(selectedDate.value);
+      }, 5 * 60 * 1000);
+      return () => clearInterval(timer);
+    });
+
     return {
       record, setting, events, today, selectedDate, saving, fetching, diff,
       editingEventId, editingTime,
       save, fetchFromApi, recordEvent, deleteEvent, startEditEvent, saveEventTime, eventLabel,
+      prevDay, nextDay,
     };
   },
   template: `
     <div>
       <div class="card">
         <div class="row" style="justify-content:space-between;margin-bottom:12px">
-           <input v-model="selectedDate" type="date" style="width:auto;padding:6px;margin:0">
+           <div class="row" style="align-items:center;gap:6px;margin:0">
+             <button @click="prevDay" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;cursor:pointer">◀</button>
+             <input v-model="selectedDate" type="date" style="width:auto;padding:6px;margin:0">
+             <button @click="nextDay" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;cursor:pointer">▶</button>
+           </div>
            <button class="secondary" @click="fetchFromApi" :disabled="fetching" style="padding:6px 12px;font-size:14px">
              {{ fetching ? '取得中...' : '自動取得' }}
            </button>
