@@ -69,6 +69,7 @@ const TodayView = {
     const today = ref('');
     const selectedDate = ref('');
     const saving = ref(false);
+    const fetching = ref(false);
     const editingEventId = ref(null);
     const editingTime = ref('');
 
@@ -133,6 +134,28 @@ const TodayView = {
       }
     }
 
+    async function fetchFromApi() {
+      fetching.value = true;
+      try {
+        const cfg = await api('api/api_settings.php');
+        if (!cfg.api_url || !cfg.api_token) {
+          emit('error', '設定画面でAPIのURLとトークンを登録してください');
+          return;
+        }
+        const url = `${cfg.api_url}?action=calories&token=${encodeURIComponent(cfg.api_token)}&date=${selectedDate.value}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '取得に失敗しました');
+        if (data.intake_kcal   != null) record.intake_kcal   = data.intake_kcal;
+        if (data.burn_kcal     != null) record.exercise_kcal = data.burn_kcal;
+        if (data.snack_kcal    != null) record.snack_kcal    = data.snack_kcal;
+      } catch (e) {
+        emit('error', e.message);
+      } finally {
+        fetching.value = false;
+      }
+    }
+
     async function recordEvent(type) {
       try {
         const ev = await api('api/events.php', {
@@ -177,9 +200,9 @@ const TodayView = {
 
     onMounted(load);
     return {
-      record, setting, events, today, selectedDate, saving, diff,
+      record, setting, events, today, selectedDate, saving, fetching, diff,
       editingEventId, editingTime,
-      save, recordEvent, deleteEvent, startEditEvent, saveEventTime, eventLabel,
+      save, fetchFromApi, recordEvent, deleteEvent, startEditEvent, saveEventTime, eventLabel,
     };
   },
   template: `
@@ -187,6 +210,9 @@ const TodayView = {
       <div class="card">
         <div class="row" style="justify-content:space-between;margin-bottom:12px">
            <input v-model="selectedDate" type="date" style="width:auto;padding:6px;margin:0">
+           <button class="secondary" @click="fetchFromApi" :disabled="fetching" style="padding:6px 12px;font-size:14px">
+             {{ fetching ? '取得中...' : '自動取得' }}
+           </button>
         </div>
         <div v-if="setting">
           <p style="font-size:13px;color:#666;margin-bottom:12px">
@@ -413,11 +439,43 @@ const SettingsView = {
     const form = reactive({ id: null, start_date: '', end_date: '', base_intake_kcal: '', base_exercise_kcal: '' });
     const editing = ref(false);
 
+    // 外部API設定
+    const apiForm = reactive({ api_url: '', api_token: '' });
+    const apiSaving = ref(false);
+    const apiMessage = ref('');
+
     async function load() {
       try {
         settings.value = await api('api/settings.php');
       } catch (e) {
         emit('error', e.message);
+      }
+    }
+
+    async function loadApiSettings() {
+      try {
+        const data = await api('api/api_settings.php');
+        apiForm.api_url   = data.api_url   ?? '';
+        apiForm.api_token = data.api_token ?? '';
+      } catch (e) {
+        emit('error', e.message);
+      }
+    }
+
+    async function saveApiSettings() {
+      apiSaving.value = true;
+      apiMessage.value = '';
+      try {
+        await api('api/api_settings.php', {
+          method: 'POST',
+          body: JSON.stringify({ api_url: apiForm.api_url, api_token: apiForm.api_token }),
+        });
+        apiMessage.value = '保存しました';
+        setTimeout(() => { apiMessage.value = ''; }, 2000);
+      } catch (e) {
+        emit('error', e.message);
+      } finally {
+        apiSaving.value = false;
       }
     }
 
@@ -462,11 +520,24 @@ const SettingsView = {
       }
     }
 
-    onMounted(load);
-    return { settings, form, editing, startNew, startEdit, save, remove };
+    onMounted(() => { load(); loadApiSettings(); });
+    return { settings, form, editing, startNew, startEdit, save, remove, apiForm, apiSaving, apiMessage, saveApiSettings };
   },
   template: `
     <div>
+      <div class="card">
+        <h3 style="margin-bottom:12px">自動取得API設定</h3>
+        <label>API URL</label>
+        <input v-model="apiForm.api_url" type="text" placeholder="例: https://example.com/backend/api.php/calories">
+        <label>トークン</label>
+        <input v-model="apiForm.api_token" type="text" placeholder="登録済みのトークン">
+        <div class="row" style="align-items:center;gap:12px">
+          <button class="primary" @click="saveApiSettings" :disabled="apiSaving">
+            {{ apiSaving ? '保存中...' : '保存' }}
+          </button>
+          <span v-if="apiMessage" style="color:#4caf50;font-size:14px">{{ apiMessage }}</span>
+        </div>
+      </div>
       <div class="card">
         <div class="row" style="justify-content:space-between;margin-bottom:12px">
           <h3>基準カロリー設定</h3>

@@ -44,6 +44,12 @@ function get_db(): PDO {
             base_exercise_kcal INTEGER NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
+        CREATE TABLE IF NOT EXISTS user_api_settings (
+            user_id INTEGER PRIMARY KEY,
+            api_url TEXT NOT NULL DEFAULT '',
+            api_token TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
     ");
     return $pdo;
 }
