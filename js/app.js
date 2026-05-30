@@ -149,6 +149,7 @@ const TodayView = {
         if (data.intake_kcal   != null) record.intake_kcal   = data.intake_kcal;
         if (data.burn_kcal     != null) record.exercise_kcal = data.burn_kcal;
         if (data.snack_kcal    != null) record.snack_kcal    = data.snack_kcal;
+        await save();
       } catch (e) {
         emit('error', e.message);
       } finally {
