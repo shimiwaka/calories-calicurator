@@ -29,6 +29,12 @@
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
     th { background: #f9f9f9; }
+    .toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+    .toggle input { display: none; }
+    .toggle-track { width: 36px; height: 20px; border-radius: 10px; background: #ccc; position: relative; transition: background .2s; }
+    .toggle-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; }
+    .toggle input:checked + .toggle-track { background: #4caf50; }
+    .toggle input:checked + .toggle-track .toggle-thumb { transform: translateX(16px); }
   </style>
 </head>
 <body>
