@@ -1,0 +1,4 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(auth|daily|events|monthly|settings|api_settings)\.php$ api.cgi [L]
+</IfModule>

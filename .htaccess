@@ -1,7 +1,3 @@
-# セッションの安全設定
-php_value session.cookie_httponly 1
-php_value session.use_strict_mode 1
-
 # SPAのルーティング：全リクエストをindex.htmlへ（APIパスは除く）
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f

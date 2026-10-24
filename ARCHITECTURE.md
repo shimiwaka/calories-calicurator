@@ -2,7 +2,7 @@
 
 ## 概要
 
-PHPバックエンド（REST API）+ Vue 3フロントエンド（SPA）の構成。DBはSQLite。Apache共有ホスティング想定。
+Goバックエンド（REST API、CGIとして動作）+ Vue 3フロントエンド（SPA）の構成。DBはSQLite。さくらのレンタルサーバー（FreeBSD 11 / Apache）で運用。
 
 ## ファイル構成
 
@@ -10,19 +10,37 @@ PHPバックエンド（REST API）+ Vue 3フロントエンド（SPA）の構�
 /
 ├── index.html          # SPAエントリポイント、CSS、Vueマウント
 ├── js/app.js           # Vueアプリ全体（コンポーネント定義からマウントまで）
+├── src/                # Go API のソース（package main）
+│   ├── main.go         # CGI/ローカルサーバー起動、ファイル名でのルーティング
+│   ├── util.go         # JSONレスポンス、リクエスト値の変換、todayDate()
+│   ├── db.go           # SQLite接続、テーブル自動作成
+│   ├── auth.go         # 認証エンドポイント、セッション管理
+│   ├── daily.go        # 日次記録 CRUD
+│   ├── events.go       # イベント（排泄・体重）CRUD
+│   ├── monthly.go      # 月間集計（GET のみ）
+│   ├── settings.go     # 基準カロリー設定 CRUD
+│   └── api_settings.go # 外部API設定 GET/POST
 ├── api/
-│   ├── _db.php         # PDO接続、テーブル自動作成、get_today_date()
-│   ├── _auth_check.php # start_session(), require_auth(), json_response()
-│   ├── auth.php        # 認証エンドポイント
-│   ├── daily.php       # 日次記録 CRUD
-│   ├── events.php      # イベント（排泄・体重）CRUD
-│   ├── monthly.php     # 月間集計（GET のみ）
-│   ├── settings.php    # 基準カロリー設定 CRUD
-│   └── api_settings.php # 外部API設定 GET/POST
+│   ├── api.cgi         # ビルド成果物（.gitignoreで除外）
+│   └── .htaccess       # api/*.php へのリクエストを api.cgi に内部rewrite
 ├── db/
 │   └── calories.db     # SQLiteファイル（.gitignoreで除外）
-└── .htaccess           # mod_rewrite（SPA）、セッションcookie設定
+├── Makefile            # build: FreeBSD向けビルド / dev: ローカルサーバー
+└── .htaccess           # mod_rewrite（SPA）
 ```
+
+## ビルド・デプロイ
+
+FreeBSD 11 で動かすため Go 1.18（`~/go/bin/go1.18.10`）でビルドする。`golang.org/x/sys` は `go.mod` の `replace` で FreeBSD 11 互換の版に固定している。
+
+```
+make build   # api/api.cgi を生成
+make dev     # http://localhost:8080/ でローカル実行（DBはカレントの db/calories.db）
+```
+
+`api/api.cgi`（755）と `api/.htaccess` をサーバーの `api/` に置けば動く。DBパスは `api.cgi` の親ディレクトリ基準で `db/calories.db`。
+
+URLは PHP 時代の `api/*.php` のまま（フロントエンド変更なし）。`.htaccess` で内部rewriteし、Go 側は `REQUEST_URI` のファイル名でルーティングする。
 
 ## フロントエンドコンポーネント（js/app.js）
 
@@ -79,7 +97,7 @@ GET `?year=&month=` → `{ total_diff_kcal, avg_snack_kcal, avg_intake_kcal, avg
 
 ## DBスキーマ
 
-テーブル作成は `_db.php` の `get_db()` 内で `CREATE TABLE IF NOT EXISTS` により自動実行される。マイグレーション機構はない（テーブル追加時は `CREATE TABLE IF NOT EXISTS` で追記する）。
+テーブル作成は `src/db.go` の `openDB()` 内で `CREATE TABLE IF NOT EXISTS` により自動実行される。マイグレーション機構はない（テーブル追加時は `CREATE TABLE IF NOT EXISTS` で追記する）。
 
 ```sql
 users (id, username UNIQUE, password_hash, created_at)
@@ -91,15 +109,17 @@ daily_events (id, user_id, recorded_at, event_type, date)
   event_type: "excretion" | "weigh_in"
 
 calorie_settings (id, user_id, start_date, end_date NULL=無期限, base_intake_kcal, base_exercise_kcal)
-  -- 期間重複チェックはsettings.phpのcheck_overlap()で実施
+  -- 期間重複チェックはsettings.goのhasOverlap()で実施
 
 user_api_settings (user_id PK, api_url, api_token)
   -- UPSERT で常に1ユーザー1レコード
+
+sessions (id PK = トークンのSHA-256, user_id, username, expires_at UNIX秒)
 ```
 
 ## 認証
 
-PHPセッション（`session_start`）。有効期限30日。`require_auth()` は未認証時にHTTP 401で即exit。全APIエンドポイント（`auth.php`の`register`/`login`を除く）が `require_auth()` を呼ぶ。
+SQLiteの `sessions` テーブルによる独自セッション。cookie名は `calories_sid`（HttpOnly、SameSite=Lax、HTTPS時Secure）。有効期限はログイン時から30日。パスワードはbcrypt（PHPの `password_hash` で作った `$2y$` 形式もそのまま検証可能）。`requireAuth()` は未認証時にHTTP 401を返す。全APIエンドポイント（`auth.php`の`register`/`login`/`logout`を除く）が `requireAuth()` を呼ぶ。
 
 ## 差分計算ロジック
 
@@ -107,11 +127,11 @@ PHPセッション（`session_start`）。有効期限30日。`require_auth()` �
 差分 = 摂取kcal - 基準摂取kcal - 運動消費kcal + 基準消費kcal
 ```
 
-正値（赤）= オーバー、負値（緑）= 目標以内。フロントエンドの `diff` computed と `monthly.php` の集計で同じ式を使う。
+正値（赤）= オーバー、負値（緑）= 目標以内。フロントエンドの `diff` computed と `monthly.go` の集計で同じ式を使う。
 
 ## 「朝5時ルール」
 
-`_db.php` の `get_today_date()` で実装。00:00〜04:59は前日扱いにする（深夜の記録を前日に紐づける）。
+`src/util.go` の `todayDate()` で実装。JST固定で、00:00〜04:59は前日扱いにする（深夜の記録を前日に紐づける）。
 
 ## 外部API連携
 
